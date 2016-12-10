@@ -9,20 +9,26 @@
 </head>
 
 <body>
-<h1>Spotify Artist Top Five Songs</h1>
-<p>Enter a band or artist you would like to know more about.</p>
-<form id="js-search-form">
-    <label for='js-band'>Artist:</label>
-    <input type="text" name="artist-name" id="js-band">
-    <br>
-    <br>
-    <input type="submit" value="Search!">
-</form>
-<div id="js-search-results">
+<div class="container">
+    <div class="page-header">
+        <h1>Spotify Artist Top Five Songs</h1>
+    </div>
 
+    <p>Enter a band or artist you would like to know more about.</p>
+
+    <form id="js-search-form" class="form-inline">
+        <div class="form-group">
+            <label for='js-band'>Artist:</label>
+            <input type="text" class="form-control" name="artist-name" id="js-band" required>
+        </div>
+        <br><br>
+        <input type="submit" class="btn btn-primary" value="Search!">
+    </form>
+
+    <div id="js-search-results" style="margin-top: 20px"></div>
 </div>
 
-<table id="table-template" class="table table-striped text-left hidden">
+<table id="table-template" class="table table-striped text-left hidden table-hover">
     <thead>
     <tr>
         <th>Rank</th>

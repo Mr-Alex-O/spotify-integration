@@ -14,18 +14,20 @@ $('#js-search-form').submit(function(e) {
         q: searchTerm,
         type: 'artist'
     }, function(data) {
+        if (!data.artists) {
+            $('#js-search-results').html('<p>No results</p>');
+            return;
+        }
 
-        var resultElement ='';
+        var resultElement = '';
 
         if (data.artists) {
             data.artists.items.forEach(function (item) {
-                resultElement += '<div data-id="' + item.id + '" style="margin-bottom: 15px">Top five tracks for ' + item.name + '</div>';
+                resultElement += '<div class="panel panel-default" data-id="'+item.id+'"><div class="panel-heading" role="button">'+item.name+'</div></div>';
             });
-        } else {
-            resultElement += '<p>No results</p>';
         }
 
-        $('#js-search-results').html(resultElement).on('click', 'div', function () {
+        $('#js-search-results').html(resultElement).on('click', '.panel', function () {
             if ($(this).find('table').length > 0) {
                 return;
             }
@@ -33,7 +35,7 @@ $('#js-search-form').submit(function(e) {
             var resultsTable = $('#table-template').clone().removeAttr('id').removeClass('hidden').appendTo(this);
 
             for (var i = 0; i < 5; i++) {
-                var row = '<tr><td>'+(i + 1)+'</td><td class="song-title"></td><td class="album-title"></td><td class="related-artists"></td></tr>';
+                var row = '<tr><td>'+(i + 1)+'</td><td class="song-title" role="button"></td><td class="album-title"></td><td class="related-artists" role="button"></td></tr>';
 
                 resultsTable.find('tbody').append(row);
             }
