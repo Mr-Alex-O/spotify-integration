@@ -6,117 +6,125 @@ var SPOTIFY_BASE_URL = 'https://api.spotify.com/v1/';
 var MUSIXMATCH_BASE_URL = 'http://api.musixmatch.com/ws/1.1/';
 var MUSIXMATCH_API_KEY = '0fc0aa6919ea42060464b32ac6d9f687';
 
-function getDataFromApi(searchTerm, callback) {
-    var query = {
-        q: encodeURIComponent(searchTerm).replace(/%20/g, " "),
+$('#js-search-form').submit(function(e) {
+    e.preventDefault();
+    var searchTerm = $(this).find('#js-band').val();
+
+    $.getJSON(SPOTIFY_BASE_URL + "search", {
+        q: searchTerm,
         type: 'artist'
-    }
-    $.getJSON(SPOTIFY_BASE_URL + "search", query, callback);
-}
+    }, function(data) {
 
-function displaySpotifySearchData(data) {
+        var resultElement ='';
 
-    var resultElement ='';
-
-    if (data.artists) {
-        data.artists.items.forEach(function (item) {
-            resultElement += '<div data-id="' + item.id + '" style="margin-bottom: 15px">Top five tracks for ' + item.name + '<br><ol class="top-songs"></ol></div>';
-        });
-    } else {
-        resultElement += '<p>No results</p>';
-    }
-
-    $('.js-search-results').html(resultElement).on('click', 'div', function () {
-
-        var songResults = $(this).find('.top-songs');
-        songResults.empty();
-        var artistId = $(this).data('id');
-
-        var query = {
-            country: "US"
+        if (data.artists) {
+            data.artists.items.forEach(function (item) {
+                resultElement += '<div data-id="' + item.id + '" style="margin-bottom: 15px">Top five tracks for ' + item.name + '</div>';
+            });
+        } else {
+            resultElement += '<p>No results</p>';
         }
 
-        //creates the song list under the artist name
-        $.getJSON(SPOTIFY_BASE_URL + "artists/" + artistId + "/top-tracks", query, function (response) {
-            for (var i = 0; i < response.tracks.length && i < 5; i++) {
-                songResults.append('<li class="song">' + response.tracks[i].name + '</li>');
-
+        $('#js-search-results').html(resultElement).on('click', 'div', function () {
+            if ($(this).find('table').length > 0) {
+                return;
             }
 
-            $('.top-songs').on('click', 'li', function () {
-                //getting the artist ID from musix match
-                var songName = $(this).text();
-                var artistName = response.tracks[i].artists[0].name;
+            var resultsTable = $('#table-template').clone().removeAttr('id').removeClass('hidden').appendTo(this);
 
+            for (var i = 0; i < 5; i++) {
+                var row = '<tr><td>'+(i + 1)+'</td><td class="song-title"></td><td class="album-title"></td><td class="related-artists"></td></tr>';
 
+                resultsTable.find('tbody').append(row);
+            }
 
+            ////// SONGS /////
+            var artistId = $(this).data('id');
 
-                $.ajax({
-                    type: "GET",
-                    data: {
-                        apikey:MUSIXMATCH_API_KEY,
-                        q_track:songName,
-                        q_artist:artistName,
-                        f_has_lyrics: 1,
-                        format:"jsonp",
-                        callback:"jsonp_callback"
-                    },
-                    url: "http://api.musixmatch.com/ws/1.1/track.search",
-                    dataType: "jsonp",
-                    jsonpCallback: 'jsonp_callback',
-                    contentType: 'application/json',
-                    success: function(data) {
+            var songQuery = {
+                country: "US"
+            };
 
-                        $.ajax({
-                            type: "GET",
-                            data: {
-                                apikey:MUSIXMATCH_API_KEY,
-                                track_id: data.message.body.track_list[0].track.track_id,
-                                f_has_lyrics: 1,
-                                format:"jsonp",
-                                callback:"jsonp_callback"
-                            },
-                            url: "http://api.musixmatch.com/ws/1.1/track.lyrics.get?",
-                            dataType: "jsonp",
-                            jsonpCallback: 'jsonp_callback',
-                            contentType: 'application/json',
-                            success: function(data) {
-                                console.log(data);
-                                alert.clear;
-                                alert(data.message.body.lyrics.lyrics_body);
-                            },
-                            error: function(jqXHR, textStatus, errorThrown) {
-                                //console.log(jqXHR);
-                                //console.log(textStatus);
-                                //console.log(errorThrown);
-                            }
-                        });
+            //creates the song list under the artist name
+            $.getJSON(SPOTIFY_BASE_URL + "artists/" + artistId + "/top-tracks", songQuery, function (response) {
+                for (var i = 0; i < response.tracks.length && i < 5; i++) {
+                    var row = resultsTable.find('tbody').find('tr:nth-child('+(i+1)+')');
 
-                    },
-                    error: function(jqXHR, textStatus, errorThrown) {
-                        //console.log(jqXHR);
-                        //console.log(textStatus);
-                        //console.log(errorThrown);
-                    }
-                });
+                    row.find('.song-title').text(response.tracks[i].name).attr('data-album', response.tracks[i].artists[0].name);
+                }
             });
+
+            ///// ALBUMS ////
+
+            var albumQuery = {
+                album_type: 'album',
+                market: 'US'
+            };
+
+            $.getJSON(SPOTIFY_BASE_URL + "artists/" + artistId + "/albums", albumQuery, function (response) {
+                for (var i = 0; i < response.items.length && i < 5; i++) {
+                    var row = resultsTable.find('tbody').find('tr:nth-child('+(i+1)+')');
+
+                    row.find('.album-title').text(response.items[i].name);
+                }
+            });
+
+            ///// RELATED ARTISTS /////
+            $.getJSON(SPOTIFY_BASE_URL+ "artists/" + artistId + "/related-artists", function(response){
+                for (var i = 0; i < response.artists.length && i < 5; i++) {
+                    var row = resultsTable.find('tbody').find('tr:nth-child('+(i+1)+')');
+
+                    row.find('.related-artists').text(response.artists[i].name);
+                }
+            })
         });
-
     });
+});
 
 
-}
+$('#js-search-results').on('click', '.song-title', function () {
+    //getting the artist ID from musix match
+    var songName = $(this).text();
+    var artistName = $(this).data('album');
 
+    $.ajax({
+        type: "GET",
+        data: {
+            apikey:MUSIXMATCH_API_KEY,
+            q_track:songName,
+            q_artist:artistName,
+            f_has_lyrics: 1,
+            format:"jsonp"
+        },
+        url: "http://api.musixmatch.com/ws/1.1/track.search",
+        dataType: "jsonp",
+        jsonpCallback: '$callback',
+        success: function(data) {
+            $.ajax({
+                type: "GET",
+                data: {
+                    apikey:MUSIXMATCH_API_KEY,
+                    track_id: data.message.body.track_list[0].track.track_id,
+                    f_has_lyrics: 1,
+                    format:"jsonp"
+                },
+                url: "http://api.musixmatch.com/ws/1.1/track.lyrics.get?",
+                dataType: "jsonp",
+                jsonpCallback: '$callback',
+                contentType: 'application/json',
+                success: function(data) {
+                    alert(data.message.body.lyrics.lyrics_body);
+                }
+            });
 
+        }
+    });
+});
 
+$('#js-search-results').on('click', '.related-artists', function(){
+    var    relatedArtistName = $(this).text();
 
-function watchSubmit() {
-    $('#js-search-form').submit(function(e) {
-        e.preventDefault();
-        var query = $(this).find('#js-band').val();
-        
-        getDataFromApi(query, displaySpotifySearchData);
-    })
-}
-
-watchSubmit();
+    $('#js-search-results').empty();
+    $('#js-band').val(relatedArtistName);
+    $('#js-search-form').trigger('submit');
+})
